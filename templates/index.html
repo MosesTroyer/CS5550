@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Computer Networking Fall 2015</title>
+<link rel=stylesheet href={{ url_for('static', filename='style.css') }} type=text/css>
+</head>
+
+<body>
+
+<ul id="chatMessages"> </ul>
+
+<br />
+
+<input id="chatMessage" /><button id="send">Send</button>
+
+
+<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+<script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+<script type="text/javascript">
+	$(document).ready(function() {
+		var socket = io.connect('http://' + document.domain + ':' + location.port + "/chat");
+	
+		socket.on('connect', function() {
+			console.log("connected.");
+		});
+
+		socket.on("disconnect", function() {
+			console.log("disconnected!");
+		});
+
+		$("#send").click(function() {
+			socket.emit("chatMessage", $("#chatMessage").val());
+			$("#chatMessage").val("");
+		});
+
+		socket.on("chatMessage", function(message) {
+			$("#chatMessages").append($("<li>").text(message));
+			console.log(message);
+		});
+
+	});
+</script>
+
+</body>
+
+</html>
+
