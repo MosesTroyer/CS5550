@@ -19,7 +19,7 @@
 <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
 <script type="text/javascript">
 	$(document).ready(function() {
-		var socket = io.connect('http://' + document.domain + ':' + location.port + "/chat");
+		var socket = io.connect('http://' + document.domain + ':' + location.port + "/rpg");
 	
 		socket.on('connect', function() {
 			console.log("connected.");

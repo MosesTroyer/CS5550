@@ -8,11 +8,11 @@ socketio = SocketIO(application)
 def hello():
 	return render_template("index.html")
 
-@socketio.on("connect", namespace="/")
+@socketio.on("connect", namespace="/rpg")
 def test_connect():
 	print("someone connected")
 
-@socketio.on("chatMessage", namespace="/")
+@socketio.on("chatMessage", namespace="/rpg")
 def chat_message(data):
 	emit("chatMessage", data, broadcast=True) 
 
