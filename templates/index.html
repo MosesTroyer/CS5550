@@ -8,36 +8,97 @@
 
 <body>
 
-<ul id="chatMessages"> </ul>
+<div id="playerCreate">
+	Enter your character information: <br />
+	Name: <input id="playerCreateName" /> <br>
+	<br>
+	<button id="playerCreateSend">Submit</button>
 
-<br />
+</div>
 
-<input id="chatMessage" /><button id="send">Send</button>
-
+<div id="chat">
+	<ul id="chatMessages"> </ul>
+	<br />
+	<input id="chatMessage" /><button id="send">Send</button>
+</div>
 
 <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
 <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
 <script type="text/javascript">
 	$(document).ready(function() {
 		var socket = io.connect('http://' + document.domain + ':' + location.port + "/rpg");
-	
+		$("#chat").hide();
+
+		//*** GLOBAL VARIABLES ***//
+		var roomName = "";
+		var player = "";
+		var playerNameVerify = "";
+
+		//*** CONNECTION ***//
 		socket.on('connect', function() {
-			console.log("connected.");
+			//console.log("connected.");
 		});
 
 		socket.on("disconnect", function() {
-			console.log("disconnected!");
+			//console.log("disconnected!");
 		});
 
+		//*** CHAT ***//
 		$("#send").click(function() {
-			socket.emit("chatMessage", $("#chatMessage").val());
+			var data = {
+				"roomName": roomName,
+				"playerName": player.name,
+				"message": $("#chatMessage").val()
+			}
+			socket.emit("chatMessage", JSON.stringify(data));
 			$("#chatMessage").val("");
 		});
 
-		socket.on("chatMessage", function(message) {
-			$("#chatMessages").append($("<li>").text(message));
-			console.log(message);
+		socket.on("chatMessage", function(data) {
+			$("#chatMessages").append($("<li>").text(data.playerName + ": " + data.message));
+			//console.log(message);
 		});
+
+		//*** PLAYER AND ROOM META ***//
+		$("#playerCreateSend").click(function() {
+			playerNameVerify = $("#playerCreateName").val();
+			var information = {
+				player: {
+					"name": $("#playerCreateName").val()
+				}
+			};
+			socket.emit("playerJoin", JSON.stringify(information));
+		});
+
+		socket.on("confirmPlayerJoin", function(json) {
+			checkPlayer = json.player;
+			if(checkPlayer.name === playerNameVerify){
+				roomName = json.roomName;
+				player = json.player;
+
+				console.log("confirmed, room is " + json.roomName);
+
+				$("#playerCreate").remove();
+				$("#chat").show();
+			}
+		});
+
+		socket.on("kickPlayer", function(name) {
+			if(player.name === name){
+				console.log("You have been kicked for inactivity.");
+				socket.disconnect();
+			}
+		});
+
+		//*** TURN INFORMATION ***//
+		socket.on("turnStart", function(data) {
+			console.log("Starting Turn.");
+		});
+
+		socket.on("turnEnd", function(data) {
+			console.log("The turn is over.");
+		});
+
 
 	});
 </script>
