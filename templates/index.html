@@ -16,18 +16,48 @@
 
 </div>
 
-<div id="chat">
-	<ul id="chatMessages"> </ul>
+<div id="gameWindow">
+
+	<div id="playerActions">
+		<button id="attack">Attack</button>
+	</div>
+
+	<div id="monsters">
+		Enemies: <br />
+	</div>
+
 	<br />
-	<input id="chatMessage" /><button id="send">Send</button>
+
+	<div id="player">
+	</div>
+
+	<br />
+
+	<div id="party">
+	</div>
+
+	<br />
+
+	<div id="chat">
+		<ul id="chatMessages"> </ul>
+		<br />
+		<input id="chatMessage" /><button id="send">Send</button>
+	</div>
+
 </div>
+
+<div id="disconnect">
+You have been kicked for inactivity.
+</div>
+
 
 <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
 <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
 <script type="text/javascript">
 	$(document).ready(function() {
 		var socket = io.connect('http://' + document.domain + ':' + location.port + "/rpg");
-		$("#chat").hide();
+		$("#gameWindow").hide();
+		$("#disconnect").hide();
 
 		//*** GLOBAL VARIABLES ***//
 		var roomName = "";
@@ -77,9 +107,13 @@
 				player = json.player;
 
 				console.log("confirmed, room is " + json.roomName);
+				console.log("Player Information: ");
+				console.log(player);
+
+				updatePlayer(player);
 
 				$("#playerCreate").remove();
-				$("#chat").show();
+				$("#gameWindow").show();
 			}
 		});
 
@@ -87,18 +121,86 @@
 			if(player.name === name){
 				console.log("You have been kicked for inactivity.");
 				socket.disconnect();
+				$("#gameWindow").hide();
+				$("#disconnect").show();
 			}
 		});
+
+		socket.on("heartbeat", function(data) {
+			console.log(data);
+		});
+
+		function updatePlayer(player){
+
+			var formattedStats = formatStats(player);
+
+			$("#player").html(formattedStats);
+
+		}
+
+		function formatStats(player){	
+			var ret = player.name
+				+ "<br />" + "HP: " + player.currentHP + "/" + player.HP
+				+ "<br />" + "Level: " + player.level
+				+ " | EXP: " + player.exp
+				+ "<br />" + "Mana: " + player.currentMana + "/" + player.mana;
+
+			return ret;
+		}
+
+		function updateMonsters(monsters){
+			var formattedMonsters = "";
+
+			for(var i = 0; i < monsters.length; i++){
+				formattedMonsters += formatMonster(monsters[i]);
+				console.log(formattedMonsters);
+			}
+
+			$("#monsters").html(formattedMonsters);
+		}
+
+		function formatMonster(monster){
+			var ret = monster.name
+				+ "<br />" + "Level: " + monster.level
+				+ "<br />" + "HP: " + monster.currentHP + "/" + monster.HP;
+
+			return ret;
+		}
 
 		//*** TURN INFORMATION ***//
 		socket.on("turnStart", function(data) {
 			console.log("Starting Turn.");
+			$("#playerActions").show();
 		});
 
 		socket.on("turnEnd", function(data) {
 			console.log("The turn is over.");
+			$("#playerActions").hide();
 		});
 
+		socket.on("monstersBroadcast", function(data) {
+			console.log("Monsters:");
+			console.log(data);
+
+			updateMonsters(data);
+		});
+
+		//*** PLAYER ACTIONS ***//
+		function playerAction(action){
+			var data = {
+				"roomName": roomName,
+				"player": player,
+				"action": action
+			}
+			socket.emit("playerAction", JSON.stringify(data));
+
+		}
+
+		$("#attack").click(function() {
+			console.log("Attacking monster");
+			playerAction("attack");
+		});
+		
 
 	});
 </script>

@@ -6,12 +6,28 @@ import datetime, time, json
 application = Flask(__name__)
 application.config['SECRET_KEY'] = "secret"
 socketio = SocketIO(application)
-#monkey.patch_all()
 
-#TODO ASK ALA - Should I be using a database to store these variables, or is it fine
-#for this smaller application?
 playerActions = {}
 playerList = {}
+
+monsterTypes = {
+	"slime": {
+		"name": "Slime",
+		"level": 1,
+		"HP": 2,
+		"currentHP": 2,
+		"mana": 1,
+		"currentMana": 1,
+		"stats": {
+			"strength": 1,
+			"fortitude": 1,
+			"intelligence": 1,
+			"constitution": 1,
+			"agility": 1
+		}
+	}
+
+}
 
 ##### WEBPAGES #####
 @application.route("/")
@@ -42,42 +58,73 @@ def player_join(dataInput):
 		confirm_player_join(name, data['player'])
 
 def confirm_player_join(roomName, player):
+	#build player data
+	player["HP"] = 10
+	player["level"] = 1
+	player["exp"] = 0
+	player["currentHP"] = 10
+	player["mana"] = 10
+	player["currentMana"] = 10
+	stats = {"strength": 1, "fortitude": 1, "intelligence": 1, "constitution": 1, "agility": 1}
+	player["stats"] = stats
 	emit("confirmPlayerJoin", {"roomName": roomName, "player": player}, room=roomName)
 
 @socketio.on("chatMessage", namespace="/rpg")
 def chat_message(dataInput):
-	data = json.loads(dataInput);
+	data = json.loads(dataInput)
 	emit("chatMessage", data, room=data['roomName'])
+
+@socketio.on("playerAction", namespace="/rpg")
+def player_action(dataInput):
+	data = json.loads(dataInput)
+	(playerActions[data["roomName"]])[(data["player"])["name"]] = data["action"]
 
 ##### BATTLE CONTROL #####
 def battle_loop(roomName, initialPlayer):
 	playerActions[roomName] = {}
 	playerList[roomName] = [initialPlayer["name"]]
 	rollCall = {}
+	actions = {}
+	monsters = []
+	monsters.append(create_monster())
 
-	for i in range(10):
+	while len(playerList[roomName]) > 0:
+		send_monsters(roomName, monsters)
 		turn_start(roomName)
-		time.sleep(10)
+		for i in range(10):
+			time.sleep(1)
+			socketio.emit("heartbeat", str(i) + " seconds in", room=roomName, namespace="/rpg")
 		turn_end(roomName)
 		
 		#Assemble player actions
 		for player in playerList[roomName]:
-			if player in playerActions:
-				#group into list
-				#remove from roll call
-				pass
+			if player in playerActions[roomName]:
+				actions[player] = (playerActions[roomName]).pop(player)
+				rollCall[player] = 0
+				print(actions[player])
 			else:
 				if player in rollCall:
 					rollCall[player] = rollCall[player] + 1
+					if rollCall[player] >= 3:
+						socketio.emit("kickPlayer", player, room=roomName, namespace="/rpg")
+						rollCall.pop(player, None)
+						(playerList[roomName]).remove(player)
 				else:
 					rollCall[player] = 1
 
-		for player in rollCall:
-			if rollCall[player] >= 3:
-				socketio.emit("kickPlayer", player, room=roomName, namespace="/rpg")
-				rollCall.pop(player, None)
-				(playerList[roomName]).remove(player)
+		#assemble monster actions
 
+		#make all actions happen
+
+		actions = {}
+	
+	playerList.pop(roomName, None)
+
+def create_monster():
+	return monsterTypes["slime"]
+
+def send_monsters(roomName, monsters):
+	socketio.emit("monstersBroadcast", monsters, room=roomName, namespace="/rpg")
 
 def turn_start(roomName):
 	socketio.emit("turnStart", {"data": ""}, room=roomName, namespace="/rpg")

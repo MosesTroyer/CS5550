@@ -1,6 +1,15 @@
 <h1>CS5550 Semester Project</h1>
 
-Instructions:
+This is a turn based, multiplayer RPG battle system made for CS 5550. 
+The main focus of the project was to learn about how to use websockets.
+
+The most WIP build of the project is located at http://104.131.9.78/.
+
+<h2>Game Instructions:</h2>
+
+
+
+<h2>Installation Instructions:</h2>
 
 After pulling, navigate to the directory.
 
