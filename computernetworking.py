@@ -25,8 +25,39 @@ monsterTypes = {
 			"constitution": 1,
 			"agility": 1
 		}
-	}
+	},
 
+	"spider": {
+		"name": "Giant Spider",
+		"level": 2,
+		"HP": 5,
+		"currentHP": 5,
+		"mana": 1,
+		"currentMana": 1,
+		"stats": {
+			"strength": 2,
+			"fortitude": 3,
+			"intelligence": 2,
+			"constitution": 1,
+			"agility": 3
+		}
+	},
+
+	"harpy": {
+		"name": "Harpy",
+		"level": 5,
+		"HP": 14,
+		"currentHP": 14,
+		"mana": 5,
+		"currentMana": 5,
+		"stats": {
+			"strength": 3,
+			"fortitude": 2,
+			"intelligence": 5,
+			"constitution": 4,
+			"agility": 5
+		}
+	}
 }
 
 ##### WEBPAGES #####
@@ -46,16 +77,14 @@ def player_join(dataInput):
 	for room in playerList:
 		if (not inRoom) and len(playerList[room]) < 4:
 			join_room(room)
-			playerList[room].append((data['player'])['name'])
 			inRoom = True
-			confirm_player_join(room, data['player'])
+			playerList[room].append(confirm_player_join(room, data['player']))
 			break
 	if not inRoom:
 		name = str(datetime.datetime.now())
 		join_room(name)
-		thread = Thread(target=battle_loop, args=(name, data['player']))
-		thread.start()
-		confirm_player_join(name, data['player'])
+		thread = Thread(target=battle_loop, args=(name, confirm_player_join(name, data['player'])))
+		thread.start()	
 
 def confirm_player_join(roomName, player):
 	#build player data
@@ -68,6 +97,7 @@ def confirm_player_join(roomName, player):
 	stats = {"strength": 1, "fortitude": 1, "intelligence": 1, "constitution": 1, "agility": 1}
 	player["stats"] = stats
 	emit("confirmPlayerJoin", {"roomName": roomName, "player": player}, room=roomName)
+	return player
 
 @socketio.on("chatMessage", namespace="/rpg")
 def chat_message(dataInput):
@@ -77,20 +107,21 @@ def chat_message(dataInput):
 @socketio.on("playerAction", namespace="/rpg")
 def player_action(dataInput):
 	data = json.loads(dataInput)
-	(playerActions[data["roomName"]])[(data["player"])["name"]] = data["action"]
+	(playerActions[data["roomName"]])[(data["player"])["name"]] = data
 
 ##### BATTLE CONTROL #####
 def battle_loop(roomName, initialPlayer):
 	playerActions[roomName] = {}
-	playerList[roomName] = [initialPlayer["name"]]
+	playerList[roomName] = [initialPlayer]
 	rollCall = {}
-	actions = {}
+	actions = []
 	monsters = []
 	monsters.append(create_monster())
 
 	while len(playerList[roomName]) > 0:
 		send_monsters(roomName, monsters)
 		turn_start(roomName)
+		actions = []
 		for i in range(10):
 			time.sleep(1)
 			socketio.emit("heartbeat", str(i) + " seconds in", room=roomName, namespace="/rpg")
@@ -98,26 +129,38 @@ def battle_loop(roomName, initialPlayer):
 		
 		#Assemble player actions
 		for player in playerList[roomName]:
-			if player in playerActions[roomName]:
-				actions[player] = (playerActions[roomName]).pop(player)
-				rollCall[player] = 0
-				print(actions[player])
-			else:
-				if player in rollCall:
-					rollCall[player] = rollCall[player] + 1
-					if rollCall[player] >= 3:
-						socketio.emit("kickPlayer", player, room=roomName, namespace="/rpg")
-						rollCall.pop(player, None)
+			if player["name"] in playerActions[roomName]: 
+				actions.append((playerActions[roomName]).pop(player["name"]))
+				rollCall[player["name"]] = 0
+				#if((actions[player])["action"] == "attack"):
+				#	socketio.emit("heartbeat", "you attacked", room=roomName, namespace="/rpg")
+			else: #Inactivity logic
+				if player["name"] in rollCall:
+					(rollCall[player["name"]]) = rollCall[player["name"]] + 1
+					if rollCall[player["name"]] >= 3:
+						socketio.emit("kickPlayer", player["name"], room=roomName, namespace="/rpg")
+						rollCall.pop(player["name"], None)
 						(playerList[roomName]).remove(player)
 				else:
-					rollCall[player] = 1
+					rollCall[player["name"]] = 1
 
 		#assemble monster actions
+		for mon in monsters:
+			pass
+			#random select player character
+			#create attack
+
+		#sort actions based on speed
 
 		#make all actions happen
+		for action in actions:
+			if action["action"] == "attack":
+				damage = attack(action["player"], action["target"], roomName)
+				for mon in monsters:
+					if mon["name"] == (action["target"])["name"]:
+						monsters.remove(mon)
+						monsters.append(action["target"])
 
-		actions = {}
-	
 	playerList.pop(roomName, None)
 
 def create_monster():
@@ -125,6 +168,20 @@ def create_monster():
 
 def send_monsters(roomName, monsters):
 	socketio.emit("monstersBroadcast", monsters, room=roomName, namespace="/rpg")
+
+##### ACTIONS #####
+def attack(attacker, target, roomName):
+	damage = (attacker["stats"])["strength"]
+
+	target["currentHP"] = target["currentHP"] - damage
+
+	data = {}
+	data["attacker"] = attacker
+	data["target"] = target
+	data["damage"] = damage
+	data["message"] = attacker["name"] + " attacked " + target["name"] + " for " + str(damage) + " damage!"
+	socketio.emit("gameUpdate", data, room=roomName, namespace="/rpg")
+	return damage
 
 def turn_start(roomName):
 	socketio.emit("turnStart", {"data": ""}, room=roomName, namespace="/rpg")

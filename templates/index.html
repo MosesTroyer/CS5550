@@ -18,10 +18,6 @@
 
 <div id="gameWindow">
 
-	<div id="playerActions">
-		<button id="attack">Attack</button>
-	</div>
-
 	<div id="monsters">
 		Enemies: <br />
 	</div>
@@ -40,7 +36,6 @@
 
 	<div id="chat">
 		<ul id="chatMessages"> </ul>
-		<br />
 		<input id="chatMessage" /><button id="send">Send</button>
 	</div>
 
@@ -63,6 +58,7 @@ You have been kicked for inactivity.
 		var roomName = "";
 		var player = "";
 		var playerNameVerify = "";
+		var monsters;
 
 		//*** CONNECTION ***//
 		socket.on('connect', function() {
@@ -87,6 +83,12 @@ You have been kicked for inactivity.
 		socket.on("chatMessage", function(data) {
 			$("#chatMessages").append($("<li>").text(data.playerName + ": " + data.message));
 			//console.log(message);
+			$("#chatMessages").animate({scrollTop: $("#chatMessages").prop("scrollHeight")}, 0);
+		});
+
+		socket.on("gameUpdate", function(data) {
+			$("#chatMessages").append($("<li>").text(data.message));
+			$("#chatMessages").animate({scrollTop: $("#chatMessages").prop("scrollHeight")}, 0);
 		});
 
 		//*** PLAYER AND ROOM META ***//
@@ -141,9 +143,9 @@ You have been kicked for inactivity.
 		function formatStats(player){	
 			var ret = player.name
 				+ "<br />" + "HP: " + player.currentHP + "/" + player.HP
+				+ "<br />" + "Mana: " + player.currentMana + "/" + player.mana
 				+ "<br />" + "Level: " + player.level
-				+ " | EXP: " + player.exp
-				+ "<br />" + "Mana: " + player.currentMana + "/" + player.mana;
+				+ " | EXP: " + player.exp;
 
 			return ret;
 		}
@@ -157,12 +159,18 @@ You have been kicked for inactivity.
 			}
 
 			$("#monsters").html(formattedMonsters);
+
+			$(".attack").bind("click", attack);
 		}
 
 		function formatMonster(monster){
 			var ret = monster.name
 				+ "<br />" + "Level: " + monster.level
-				+ "<br />" + "HP: " + monster.currentHP + "/" + monster.HP;
+				+ "<br />" + "HP: " + monster.currentHP + "/" + monster.HP
+
+				+ "<div class='playerActions'>"
+					+ "<button class='attack'>Attack</button>"
+				+ "</div>";
 
 			return ret;
 		}
@@ -182,6 +190,7 @@ You have been kicked for inactivity.
 			console.log("Monsters:");
 			console.log(data);
 
+			monsters = data;
 			updateMonsters(data);
 		});
 
@@ -190,17 +199,17 @@ You have been kicked for inactivity.
 			var data = {
 				"roomName": roomName,
 				"player": player,
+				"target": monsters[0],
 				"action": action
 			}
 			socket.emit("playerAction", JSON.stringify(data));
 
 		}
 
-		$("#attack").click(function() {
+		function attack() {
 			console.log("Attacking monster");
 			playerAction("attack");
-		});
-		
+		};
 
 	});
 </script>

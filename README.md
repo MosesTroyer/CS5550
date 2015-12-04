@@ -7,7 +7,9 @@ The most WIP build of the project is located at http://104.131.9.78/.
 
 <h2>Game Instructions:</h2>
 
+First, enter a name for yourself.
 
+Then, attack the monsters as they appear- don't think about the fact that they have families.
 
 <h2>Installation Instructions:</h2>
 
@@ -30,3 +32,6 @@ Run the python app:
 <code>python computernetworking.py</code>
 
 Then, the site will be at http://0.0.0.0:5000/. 
+
+
+I understand that this has holes and bugs and security issues... it was just fun to make for a class.

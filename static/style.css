@@ -1,6 +1,39 @@
-ul { padding:0 }
+body {
+	background-color: #CB4C32;
+}
+
+ul { 
+	padding: 0;
+}
 
 li {
 	list-style-type: none;
+}
 
+#gameWindow {
+	background-color: #D46A6a;
+	padding: 5px;
+}
+
+#chatMessages {
+	background-color: #FFAAAA;
+	height: 200px;
+	overflow: hidden;
+	overflow-y: scroll;
+	padding: 5px;
+}
+
+#playerCreate {
+	background-color: #FFAAAA;
+	padding: 10px;
+	margin: auto;
+	width: 33%;
+
+}
+
+#disconnect {
+	background-color: #FFAAAA;
+	padding: 10px;
+	margin: auto;
+	width: 33%;
 }
