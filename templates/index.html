@@ -39,6 +39,11 @@
 		<input id="chatMessage" /><button id="send">Send</button>
 	</div>
 
+	<br />
+
+	<div id="timer">
+	</div>
+
 </div>
 
 <div id="disconnect">
@@ -128,8 +133,18 @@ You have been kicked for inactivity.
 			}
 		});
 
+		socket.on("deadPlayer", function(name) {
+			if(player.name === name){
+				socket.disconnect();
+				$("#gameWindow").hide();
+				$("#disconnect").html("You have been killed!");
+				$("#disconnect").show();
+			}
+		});
+
 		socket.on("heartbeat", function(data) {
 			console.log(data);
+			$("#timer").html(data + " seconds left.");
 		});
 
 		function updatePlayer(player){
@@ -150,17 +165,48 @@ You have been kicked for inactivity.
 			return ret;
 		}
 
-		function updateMonsters(monsters){
+		function updateMonsters(monstersData){
 			var formattedMonsters = "";
 
-			for(var i = 0; i < monsters.length; i++){
-				formattedMonsters += formatMonster(monsters[i]);
+			monsters = monstersData;
+
+			for(var i = 0; i < monstersData.length; i++){
+				formattedMonsters += formatMonster(monstersData[i]);
 				console.log(formattedMonsters);
 			}
 
 			$("#monsters").html(formattedMonsters);
 
-			$(".attack").bind("click", attack);
+			for(var i = 0; i < monstersData.length; i++){
+				var monsterName = monstersData[i].name;
+				console.log("Binding... " + monsterName);
+				bindAttack(monsterName);
+			}
+		}
+
+		function updatePlayers(playersData) {
+			var formattedPlayers = "";
+
+			for(var i = 0; i < playersData.length; i++){
+				if(playersData[i].name == player.name){
+					updatePlayer(playersData[i]);
+				} else {
+					formattedPlayers += formatStats(playersData[i]);
+				}
+			}
+
+			$("#party").html(formattedPlayers);
+
+		}
+
+		function bindAttack(name){
+			$("#" + name).off("click");
+			$("#" + name).on("click", function() {
+				console.log(name);
+				console.log("attacking monster");
+				playerAction("attack", name);
+			});
+			console.log("Bound " + name);
 		}
 
 		function formatMonster(monster){
@@ -169,7 +215,7 @@ You have been kicked for inactivity.
 				+ "<br />" + "HP: " + monster.currentHP + "/" + monster.HP
 
 				+ "<div class='playerActions'>"
-					+ "<button class='attack'>Attack</button>"
+					+ "<button class='attack' id='" + monster.name + "'>Attack</button>"
 				+ "</div>";
 
 			return ret;
@@ -194,22 +240,31 @@ You have been kicked for inactivity.
 			updateMonsters(data);
 		});
 
+		socket.on("playersBroadcast", function(data) {
+			updatePlayers(data);
+		});
+
 		//*** PLAYER ACTIONS ***//
-		function playerAction(action){
+		function playerAction(action, targetName){
+			var target = 0;
+		
+			for(var i = 0; i < monsters.length; i++){
+				if(targetName == monsters[i].name)
+					target = monsters[i];
+			}
+
+			if(target == 0)
+				return;
+
 			var data = {
 				"roomName": roomName,
 				"player": player,
-				"target": monsters[0],
+				"target": target,
 				"action": action
 			}
 			socket.emit("playerAction", JSON.stringify(data));
 
 		}
-
-		function attack() {
-			console.log("Attacking monster");
-			playerAction("attack");
-		};
 
 	});
 </script>

@@ -2,7 +2,7 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from threading import Thread
 from gevent import monkey
-import datetime, time, json
+import datetime, time, json, random
 application = Flask(__name__)
 application.config['SECRET_KEY'] = "secret"
 socketio = SocketIO(application)
@@ -23,7 +23,7 @@ monsterTypes = {
 			"fortitude": 1,
 			"intelligence": 1,
 			"constitution": 1,
-			"agility": 1
+			"agility": 0
 		}
 	},
 
@@ -116,15 +116,21 @@ def battle_loop(roomName, initialPlayer):
 	rollCall = {}
 	actions = []
 	monsters = []
-	monsters.append(create_monster())
+	monsters = create_monsters([playerList[roomName]])
 
 	while len(playerList[roomName]) > 0:
 		send_monsters(roomName, monsters)
+		send_players(roomName, playerList[roomName])
 		turn_start(roomName)
 		actions = []
-		for i in range(10):
+
+		i = 10
+		while i > 0:
 			time.sleep(1)
-			socketio.emit("heartbeat", str(i) + " seconds in", room=roomName, namespace="/rpg")
+			socketio.emit("heartbeat", str(i), room=roomName, namespace="/rpg")
+			if len(playerActions[roomName]) >= len(playerList[roomName]):
+				i = -1
+			i -= 1
 		turn_end(roomName)
 		
 		#Assemble player actions
@@ -146,28 +152,84 @@ def battle_loop(roomName, initialPlayer):
 
 		#assemble monster actions
 		for mon in monsters:
-			pass
-			#random select player character
-			#create attack
+			if len(playerList[roomName]) == 0:
+				continue
+			target = random.randint(0, len(playerList[roomName]) - 1)
+			newAction = {"action": "attack", "player": mon, "target": (playerList[roomName])[target]}
+			actions.append(newAction)
 
 		#sort actions based on speed
 
 		#make all actions happen
 		for action in actions:
+			alive = False
+			for mon in monsters:
+				if mon["name"] == (action["player"])["name"]:
+					alive = True
+			for p in playerList[roomName]:
+				if p["name"] == (action["player"])["name"]:
+					alive = True
+
+			if not alive:
+				continue
+
 			if action["action"] == "attack":
 				damage = attack(action["player"], action["target"], roomName)
 				for mon in monsters:
 					if mon["name"] == (action["target"])["name"]:
-						monsters.remove(mon)
-						monsters.append(action["target"])
+						mon["currentHP"] = mon["currentHP"] - damage
+						print str(mon["currentHP"])
+						if mon["currentHP"] <= 0:
+							print "removing"
+							monsters.remove(mon)
+				for p in playerList[roomName]:
+					if p["currentHP"] <= 0:
+						socketio.emit("deadPlayer", p["name"], room=roomName, namespace="/rpg")
+
+		if len(monsters) == 0:
+			data = {}
+			data["message"] = "You won the fight!"
+			socketio.emit("gameUpdate", data, room=roomName, namespace="/rpg")
+			data["message"] = "More monsters appeared!"
+			socketio.emit("gameUpdate", data, room=roomName, namespace="/rpg")
+			print playerList
+			monsters = create_monsters(playerList[roomName])
+			print monsters
 
 	playerList.pop(roomName, None)
 
-def create_monster():
-	return monsterTypes["slime"]
+def create_monsters(players):
+	ret = []
+	if len(players) == 1:
+		ret.append(monsterTypes["slime"].copy())
+		return ret
+	elif len(players) == 2:
+		ret.append(monsterTypes["slime"].copy())
+		ret.append(monsterTypes["slime"].copy())
+		ret = assignNumbers(ret)
+		return ret
+	elif len(players) == 3:
+		ret.append(monsterTypes["spider"].copy())
+		return ret
+	elif len(players) > 3:
+		ret.append(monsterTpyes["harpy"].copy())
+		return ret
+	return ret
+
+def assignNumbers(monsters):
+	i = 1
+	for mon in monsters:
+		mon["name"] = mon["name"] + "" + str(i)
+		i = i + 1
+
+	return monsters
 
 def send_monsters(roomName, monsters):
 	socketio.emit("monstersBroadcast", monsters, room=roomName, namespace="/rpg")
+
+def send_players(roomName, players):
+	socketio.emit("playersBroadcast", players, room=roomName, namespace="/rpg")
+
 
 ##### ACTIONS #####
 def attack(attacker, target, roomName):
