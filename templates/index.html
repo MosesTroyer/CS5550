@@ -160,7 +160,7 @@ You have been kicked for inactivity.
 				+ "<br />" + "HP: " + player.currentHP + "/" + player.HP
 				+ "<br />" + "Mana: " + player.currentMana + "/" + player.mana
 				+ "<br />" + "Level: " + player.level
-				+ " | EXP: " + player.exp;
+				+ " | EXP: " + player.exp + "<br /><br />";
 
 			return ret;
 		}
@@ -264,6 +264,8 @@ You have been kicked for inactivity.
 			}
 			socket.emit("playerAction", JSON.stringify(data));
 
+			$("#chatMessages").append($("<li>").text("You prepare to " + action + "..."));
+			$("#chatMessages").animate({scrollTop: $("#chatMessages").prop("scrollHeight")}, 0);
 		}
 
 	});

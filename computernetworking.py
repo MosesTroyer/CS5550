@@ -28,7 +28,7 @@ monsterTypes = {
 	},
 
 	"spider": {
-		"name": "Giant Spider",
+		"name": "GiantSpider",
 		"level": 2,
 		"HP": 5,
 		"currentHP": 5,
@@ -185,6 +185,7 @@ def battle_loop(roomName, initialPlayer):
 				for p in playerList[roomName]:
 					if p["currentHP"] <= 0:
 						socketio.emit("deadPlayer", p["name"], room=roomName, namespace="/rpg")
+						(playerList[roomName]).remove(p)
 
 		if len(monsters) == 0:
 			data = {}
@@ -212,7 +213,7 @@ def create_monsters(players):
 		ret.append(monsterTypes["spider"].copy())
 		return ret
 	elif len(players) > 3:
-		ret.append(monsterTpyes["harpy"].copy())
+		ret.append(monsterTypes["harpy"].copy())
 		return ret
 	return ret
 
